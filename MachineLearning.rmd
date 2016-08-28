@@ -1,0 +1,87 @@
+Week 4 - Prediction Assignment Writeup
+=======================================
+Zhongrun Xiang
+Aug-26-2016
+
+# Introduction
+This is the assignment for the Coursera course practical machine learning, Week 4.
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement ¨C a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Data Downloading
+
+The training data for this project are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+The test data are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+To avoid the missing or modification of online files, I downloaded them into local drive before the following analyses.
+
+# Analyzing
+
+## Data Loading
+```{r}
+setwd("F:/Course/R-Coursera/MachineLearning")
+data_train<-read.csv("pml-training.csv",sep=",", na.strings=c("NA","#DIV/0!","")) 
+data_test<-read.csv("pml-testing.csv", sep=",", na.strings=c("NA","#DIV/0!","")) 
+summary(data_train);
+```
+
+There are 160 variables, while classe is the factor we need, which has 5 levels from A to E.
+
+As we can see, some variables have many NAs which is not able to use. Also, some variables are apparently not be able to use, such as user_name and timestamp.
+
+## Data Cleaning
+```{r}
+# Remove the first 6 columns, which are not measurement data.
+data_train_clean<-data_train[,-c(1,2,3,4,5,6)]
+
+# Then remove the data with many NAs.
+NA_List<-sapply(data_train_clean,function(x) sum(is.na(x)))
+
+# As we can see, many columns have more than 19000 NAs, which should be removed.
+NA_No<-c()
+for (i in 1:length(NA_List)) {
+     if (as.numeric(NA_List[[i]])>"19000") NA_No<-append(NA_No,i)
+}
+data_train_clean<-data_train_clean[,-NA_No]
+
+# There are 100 columns have more than 19000 NAs. Now, we have only 54 variables.
+# Now, we did the same thing on data_test.
+
+data_test_clean<-data_test[,-c(1,2,3,4,5,6)]
+data_test_clean<-data_test_clean[,-NA_No]
+# Remove extra columns in test dataset.
+data_test_clean<-data_test_clean[,-54]
+```
+
+## Training
+```{r}
+# Here, I set seed as a random number and set 70% of data as the training set (30% as validating data)
+set.seed(123123)
+library(caret)
+inTrain<-createDataPartition (data_train_clean$classe, p=0.7, list=FALSE)
+training<-data_train_clean[inTrain ,]
+testing<-data_train_clean[-inTrain,]
+
+gbm.modelFit<-train(classe ~ .,method="gbm",data=training,verbose=F)
+rf.modelFit<-train(classe ~ .,method="rf",data=training,verbose=F)
+```
+
+## Accuracy
+```{r}
+confusionMatrix(testing$classe,predict(gbm.modelFit,testing))
+confusionMatrix(testing$classe,predict(rf.modelFit,testing))
+```
+
+As we can see, both methods have high accuracy, while random forests is slightly better.
+
+## Prediction
+```{r}
+predict(gbm.modelFit,data_test_clean)
+predict(rf.modelFit,data_test_clean)
+```
+
+Bingo! Results are exact the same!
